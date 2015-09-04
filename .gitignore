@@ -2,4 +2,4 @@ parts
 snap
 stage
 *.snap
-
+snapcraft-armhf-chroot

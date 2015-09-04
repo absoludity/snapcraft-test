@@ -1,0 +1,61 @@
+#!/bin/sh
+
+########################################################################
+# create-snapcraft-armhf-chroot
+# Copyright (C) 2015 Canonical Ltd.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+########################################################################
+
+set -e
+set -x
+
+RELEASE=trusty
+CHROOT=./snapcraft-armhf-chroot
+
+apt-get install qemu-user-static
+qemu-debootstrap --arch=armhf $RELEASE $CHROOT http://ports.ubuntu.com/
+
+cat <<EOM > $CHROOT/etc/apt/sources.list
+deb http://ports.ubuntu.com/ $RELEASE main restricted universe multiverse
+# deb-src http://ports.ubuntu.com/ $RELEASE main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ $RELEASE-updates main restricted universe multiverse
+# deb-src http://ports.ubuntu.com/ $RELEASE-updates main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ $RELEASE-security main restricted universe multiverse
+# deb-src http://ports.ubuntu.com/ $RELEASE-security main restricted universe multiverse
+
+deb http://ports.ubuntu.com/ $RELEASE-backports main restricted universe multiverse
+# deb-src http://ports.ubuntu.com/ $RELEASE-backports main restricted universe multiverse
+EOM
+
+chroot $CHROOT apt-get update
+chroot $CHROOT apt-get -f install
+chroot $CHROOT apt-get dist-upgrade -u -y
+chroot $CHROOT apt-get -y install software-properties-common ubuntu-keyring
+chroot $CHROOT add-apt-repository -y ppa:snappy-dev/snapcraft-daily
+chroot $CHROOT apt-get update
+chroot $CHROOT apt-get install -y snapcraft 
+
+cd /srv
+
+# XXX Until a new release in the PPA, need to work with trunk snapcraft
+# XXX Extra dependencies for trunk snapcraft:
+chroot $CHROOT apt-get install -y python3-jsonschema
+chroot $CHROOT cd /srv && bzr branch lp:snapcraft
+chroot $CHROOT cd /srv && git clone https://github.com/absoludity/snapcraft-test.git
+
+chroot $CHROOT cd /srv/snapcraft-test && /srv/snapcraft/bin/snapcraft assemble
