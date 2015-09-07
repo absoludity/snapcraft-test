@@ -23,7 +23,7 @@ set -e
 set -x
 
 RELEASE=trusty
-CHROOT=$(cd ./snapcraft-armhf-chroot; pwd)
+CHROOT=$PWD/snapcraft-armhf-chroot
 
 apt-get install qemu-user-static
 qemu-debootstrap --arch=armhf $RELEASE $CHROOT http://ports.ubuntu.com/
@@ -57,18 +57,10 @@ bzr branch http://bazaar.launchpad.net/~snappy-dev/snapcraft/core/ $CHROOT/srv/s
 git clone https://github.com/absoludity/snapcraft-test.git $CHROOT/srv/snapcraft-test
 
 
-# XXX Work around what seems to be a qemu bug - https://groups.google.com/d/msg/golang-nuts/MqKTX_XIOKE/NtsWT39fHB0J
-# where running snapcraft pull via qemu results in:
-# http://paste.ubuntu.com/12302880/
-# Instead, run the pull phase locally.
-cd $CHROOT/srv/snapcraft-test/
-$CHROOT/srv/snapcraft/bin/snapcraft pull
-cd ../../..
-
-cat <<EOM > $CHROOT/srv/assemble-test-snap
+cat <<EOM > $CHROOT/srv/assemble-example-snap
 #!/bin/bash
-cd /srv/snapcraft-test
+cd /srv/snapcraft/examples/wget-deb/
 /srv/snapcraft/bin/snapcraft assemble
 EOM
-chmod 755 $CHROOT/srv/assemble-test-snap
-chroot $CHROOT /srv/assemble-test-snap
+chmod 755 $CHROOT/srv/assemble-example-snap
+chroot $CHROOT /srv/assemble-example-snap
