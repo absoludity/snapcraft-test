@@ -23,7 +23,7 @@ set -e
 set -x
 
 RELEASE=trusty
-CHROOT=./snapcraft-armhf-chroot
+CHROOT=$(cd ./snapcraft-armhf-chroot; pwd)
 
 apt-get install qemu-user-static
 qemu-debootstrap --arch=armhf $RELEASE $CHROOT http://ports.ubuntu.com/
@@ -50,12 +50,25 @@ chroot $CHROOT add-apt-repository -y ppa:snappy-dev/snapcraft-daily
 chroot $CHROOT apt-get update
 chroot $CHROOT apt-get install -y snapcraft 
 
-cd /srv
-
 # XXX Until a new release in the PPA, need to work with trunk snapcraft
 # XXX Extra dependencies for trunk snapcraft:
 chroot $CHROOT apt-get install -y python3-jsonschema
-chroot $CHROOT cd /srv && bzr branch lp:snapcraft
-chroot $CHROOT cd /srv && git clone https://github.com/absoludity/snapcraft-test.git
+bzr branch http://bazaar.launchpad.net/~snappy-dev/snapcraft/core/ $CHROOT/srv/snapcraft
+git clone https://github.com/absoludity/snapcraft-test.git $CHROOT/srv/snapcraft-test
 
-chroot $CHROOT cd /srv/snapcraft-test && /srv/snapcraft/bin/snapcraft assemble
+
+# XXX Work around what seems to be a qemu bug - https://groups.google.com/d/msg/golang-nuts/MqKTX_XIOKE/NtsWT39fHB0J
+# where running snapcraft pull via qemu results in:
+# http://paste.ubuntu.com/12302880/
+# Instead, run the pull phase locally.
+cd $CHROOT/srv/snapcraft-test/
+$CHROOT/srv/snapcraft/bin/snapcraft pull
+cd ../../..
+
+cat <<EOM > $CHROOT/srv/assemble-test-snap
+#!/bin/bash
+cd /srv/snapcraft-test
+/srv/snapcraft/bin/snapcraft assemble
+EOM
+chmod 755 $CHROOT/srv/assemble-test-snap
+chroot $CHROOT /srv/assemble-test-snap
